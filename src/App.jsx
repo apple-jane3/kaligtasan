@@ -37,7 +37,7 @@ export default function App() {
   const [newsArticles, setNewsArticles] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState("");
-  const [mobileMapFocus, setMobileMapFocus] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
@@ -107,7 +107,7 @@ export default function App() {
         setSites(results);
         setLoading(false);
         setStatus(label ? `Found sites near ${label}` : "Evacuation sites loaded");
-        setMobileMapFocus(true);
+        setSidebarOpen(false);
 
         enrichSiteAddresses(results, signal).then(() => {
           if (requestId !== requestIdRef.current || signal.aborted) return;
@@ -183,6 +183,7 @@ export default function App() {
       }
       setStatus("Click anywhere on the map.");
       setStatusError(false);
+      setSidebarOpen(false);
       return true;
     });
   }, []);
@@ -204,7 +205,7 @@ export default function App() {
       setSelectedCode(code);
       setPanTarget({ lat, lon, zoom: 10, key: Date.now() });
       setActiveTab("earthquakes");
-      setMobileMapFocus(true);
+      setSidebarOpen(false);
     },
     [earthquakes]
   );
@@ -240,14 +241,45 @@ export default function App() {
   }, [activeTab, loadNews]);
 
   useEffect(() => {
-    if (pickMode) setMobileMapFocus(true);
-  }, [pickMode]);
+    if (!sidebarOpen || !window.matchMedia("(max-width: 768px)").matches) {
+      return undefined;
+    }
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setSidebarOpen(false);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 769px)");
+    const onChange = () => {
+      if (media.matches) setSidebarOpen(false);
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
+  }, []);
 
   return (
-    <div className={`app${mobileMapFocus ? " app--map-focus" : ""}`}>
+    <div className={`app${sidebarOpen ? " app--sidebar-open" : ""}`}>
+      <button
+        type="button"
+        className="sidebar-backdrop"
+        aria-label="Close menu"
+        tabIndex={sidebarOpen ? 0 : -1}
+        onClick={() => setSidebarOpen(false)}
+      />
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        onClose={() => setSidebarOpen(false)}
         evacuationProps={{
           address,
           lat: latInput,
@@ -298,8 +330,8 @@ export default function App() {
         onClearSelection={handleClearEarthquakeSelection}
         originLat={origin?.lat}
         originLon={origin?.lon}
-        mobileMapFocus={mobileMapFocus}
-        onToggleMobileView={() => setMobileMapFocus((focused) => !focused)}
+        onOpenSidebar={() => setSidebarOpen(true)}
+        sidebarOpen={sidebarOpen}
       />
     </div>
   );

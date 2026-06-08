@@ -64,6 +64,41 @@ body {
   background: var(--surface-muted);
 }
 
+.sidebar__header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar__close {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.sidebar__close:hover {
+  background: #e2e8f0;
+  color: var(--text);
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+.menu-toggle {
+  display: none;
+}
+
 .sidebar__logo {
   width: 48px;
   height: 48px;
@@ -975,22 +1010,57 @@ body {
 
 @media (max-width: 768px) {
   .app {
-    flex-direction: column;
+    flex-direction: row;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1500;
+    border: none;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+    cursor: pointer;
+  }
+
+  .app--sidebar-open .sidebar-backdrop {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .sidebar {
-    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(380px, 88vw);
     min-width: 0;
     max-width: none;
-    flex: 1 1 46%;
-    min-height: 0;
-    max-height: none;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+    height: 100dvh;
+    flex: none;
+    z-index: 1600;
+    transform: translateX(-100%);
+    transition: transform 0.28s ease;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    box-shadow: 4px 0 24px rgba(15, 23, 42, 0.18);
+  }
+
+  .app--sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .sidebar__close {
+    display: flex;
   }
 
   .sidebar__header {
     padding: 0.75rem 1rem;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
   }
 
   .sidebar__logo {
@@ -1048,30 +1118,51 @@ body {
   }
 
   .map-wrap {
-    flex: 1 1 54%;
+    flex: 1 1 100%;
+    width: 100%;
     min-height: 0;
   }
 
-  .app--map-focus .sidebar {
-    flex: 0 0 auto;
-  }
-
-  .app--map-focus .sidebar__content,
-  .app--map-focus .sidebar__footer {
-    display: none;
-  }
-
-  .app--map-focus .map-wrap {
-    flex: 1 1 auto;
-  }
-
-  .mobile-view-toggle {
+  .menu-toggle {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    position: absolute;
+    top: max(0.75rem, env(safe-area-inset-top));
+    left: max(0.75rem, env(safe-area-inset-left));
+    z-index: 1100;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+  }
+
+  .menu-toggle__bar {
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 1px;
+    background: var(--text);
+  }
+
+  .menu-toggle:active {
+    background: #f1f5f9;
+  }
+
+  .app--sidebar-open .menu-toggle {
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .map-quake-info {
     top: max(0.5rem, env(safe-area-inset-top));
-    left: max(0.5rem, env(safe-area-inset-left));
+    left: max(3.75rem, calc(2.75rem + env(safe-area-inset-left)));
     right: max(0.5rem, env(safe-area-inset-right));
     max-width: none;
     width: auto;
@@ -1126,32 +1217,6 @@ body {
   }
 }
 
-.mobile-view-toggle {
-  display: none;
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 1100;
-  transform: translate(-50%, -50%);
-  align-items: center;
-  justify-content: center;
-  min-height: 36px;
-  padding: 0.35rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.97);
-  box-shadow: var(--shadow);
-  font-family: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--primary);
-  cursor: pointer;
-}
-
-.mobile-view-toggle:active {
-  background: #eff6ff;
-}
-
 @media (max-width: 480px) {
   .sidebar__subtitle {
     display: none;
@@ -1186,8 +1251,9 @@ body {
   }
 }
 
-@media (min-width: 769px) {
-  .mobile-view-toggle {
-    display: none !important;
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar-backdrop {
+    transition: none;
   }
 }

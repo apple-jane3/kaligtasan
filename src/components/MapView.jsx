@@ -171,8 +171,8 @@ export default function MapView({
   onClearSelection,
   originLat,
   originLon,
-  mobileMapFocus,
-  onToggleMobileView,
+  onOpenSidebar,
+  sidebarOpen,
 }) {
   const [lat, lon, zoom] = PHILIPPINE_CENTER;
   const hasSelection = Boolean(selectedCode);
@@ -294,11 +294,15 @@ export default function MapView({
 
       <button
         type="button"
-        className="mobile-view-toggle"
-        onClick={onToggleMobileView}
-        aria-expanded={mobileMapFocus}
+        className="menu-toggle"
+        onClick={onOpenSidebar}
+        aria-label="Open menu"
+        aria-expanded={sidebarOpen}
+        aria-controls="app-sidebar"
       >
-        {mobileMapFocus ? "Show panel" : "Show map"}
+        <span className="menu-toggle__bar" aria-hidden="true" />
+        <span className="menu-toggle__bar" aria-hidden="true" />
+        <span className="menu-toggle__bar" aria-hidden="true" />
       </button>
 
       <div className={`map-legend${evacuationSites.length ? " map-legend--with-evac" : ""}`}>
