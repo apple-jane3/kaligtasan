@@ -46,7 +46,7 @@ export async function fetchEarthquakeNews(
   { forceRefresh = false } = {}
 ) {
   const cacheKey = query.trim().toLowerCase();
-  if (!forceRefresh) {
+  if (!forceRefresh && !useClientFeed) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < NEWS.cacheTtlMs) {
       return cached.articles;

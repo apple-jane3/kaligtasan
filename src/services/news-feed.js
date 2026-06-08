@@ -3,7 +3,9 @@ const MAX_ARTICLES = 30;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const RSS2JSON_API = "https://api.rss2json.com/v1/api.json";
 const BROWSER_FETCH_TIMEOUT_MS = 15000;
+const BROWSER_PROXY_TIMEOUT_MS = 20000;
 const BROWSER_FETCH_CONCURRENCY = 3;
+const NEWS_PROXY_URL = import.meta.env?.VITE_NEWS_PROXY_URL || "";
 const FETCH_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -16,8 +18,8 @@ const RSS_FEEDS = [
   { url: "https://www.theguardian.com/world/rss", source: "The Guardian", region: "world" },
   { url: "https://www.aljazeera.com/xml/rss/all.xml", source: "Al Jazeera", region: "world" },
   { url: "https://rss.cnn.com/rss/edition_asia.rss", source: "CNN Asia", region: "asia" },
-  { url: "https://www.rappler.com/feed/", source: "Rappler", region: "ph" },
-  { url: "https://data.gmanetwork.com/gno/rss/news/nation/feed.xml", source: "GMA News", region: "ph" },
+  { url: "https://www.rappler.com/feed/", source: "Rappler", region: "ph", cors: true },
+  { url: "https://data.gmanetwork.com/gno/rss/news/nation/feed.xml", source: "GMA News", region: "ph", cors: true },
 ];
 
 const GOOGLE_NEWS_QUERIES = (query) => [
@@ -193,6 +195,19 @@ function rss2JsonUrl(feedUrl) {
   return `${RSS2JSON_API}?rss_url=${encodeURIComponent(feedUrl)}`;
 }
 
+function buildCorsProxyUrls(feedUrl) {
+  const urls = [];
+  if (NEWS_PROXY_URL) {
+    urls.push(`${NEWS_PROXY_URL}?url=${encodeURIComponent(feedUrl)}`);
+  }
+  urls.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`);
+  return urls;
+}
+
+function isRssXml(text) {
+  return /<(rss|feed)\b/i.test(text) || /<item>/i.test(text);
+}
+
 function mapRss2JsonItems(items, defaultSource) {
   return (items || []).map((item) => ({
     title: item.title,
@@ -203,24 +218,125 @@ function mapRss2JsonItems(items, defaultSource) {
   }));
 }
 
-async function fetchRss2Json(feedUrl, signal, timeoutMs = BROWSER_FETCH_TIMEOUT_MS) {
+async function fetchWithTimeout(url, options, timeoutMs, parentSignal) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const onAbort = () => controller.abort();
-  signal?.addEventListener("abort", onAbort);
+  parentSignal?.addEventListener("abort", onAbort);
 
   try {
-    const response = await fetch(rss2JsonUrl(feedUrl), { signal: controller.signal });
-    const data = await response.json();
-
-    if (!response.ok || data.status !== "ok") {
-      throw new Error(data.message || `RSS feed unavailable (${response.status})`);
-    }
-
-    return data.items || [];
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    return response;
   } finally {
     clearTimeout(timeoutId);
-    signal?.removeEventListener("abort", onAbort);
+    parentSignal?.removeEventListener("abort", onAbort);
+  }
+}
+
+async function fetchRss2Json(feedUrl, signal, timeoutMs = BROWSER_FETCH_TIMEOUT_MS) {
+  const response = await fetchWithTimeout(
+    rss2JsonUrl(feedUrl),
+    { cache: "no-store" },
+    timeoutMs,
+    signal
+  );
+  const data = await response.json();
+
+  if (!response.ok || data.status !== "ok") {
+    throw new Error(data.message || `RSS feed unavailable (${response.status})`);
+  }
+
+  return data.items || [];
+}
+
+async function fetchRssXml(feedUrl, signal, { forceRefresh = false, cors = false } = {}) {
+  if (!isBrowserClient()) {
+    const response = await fetchWithTimeout(
+      feedUrl,
+      { headers: FETCH_HEADERS },
+      12000,
+      signal
+    );
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status})`);
+    }
+    return response.text();
+  }
+
+  const fetchInit = {
+    cache: forceRefresh ? "no-store" : "default",
+    headers: { Accept: FETCH_HEADERS.Accept },
+  };
+
+  if (cors) {
+    const response = await fetchWithTimeout(
+      feedUrl,
+      fetchInit,
+      BROWSER_FETCH_TIMEOUT_MS,
+      signal
+    );
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status})`);
+    }
+    const text = await response.text();
+    if (isRssXml(text)) return text;
+    throw new Error("Invalid RSS response");
+  }
+
+  for (const proxyUrl of buildCorsProxyUrls(feedUrl)) {
+    try {
+      const response = await fetchWithTimeout(
+        proxyUrl,
+        fetchInit,
+        BROWSER_PROXY_TIMEOUT_MS,
+        signal
+      );
+      if (!response.ok) continue;
+      const text = await response.text();
+      if (isRssXml(text)) return text;
+    } catch {
+      // Try the next proxy.
+    }
+  }
+
+  throw new Error("RSS proxy unavailable");
+}
+
+async function fetchRssArticles(
+  feedUrl,
+  source,
+  query,
+  region,
+  signal,
+  { forceRefresh = false, cors = false } = {}
+) {
+  if (isBrowserClient() && !cors && !forceRefresh) {
+    try {
+      const items = await fetchRss2Json(feedUrl, signal);
+      return mapRss2JsonItems(items, source).filter((article) =>
+        isPhilippineEarthquakeNews(article, query, region)
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const xml = await fetchRssXml(feedUrl, signal, { forceRefresh, cors });
+    return parseRssItems(xml, source).filter((article) =>
+      isPhilippineEarthquakeNews(article, query, region)
+    );
+  } catch {
+    if (!isBrowserClient()) return [];
+  }
+
+  try {
+    const items = await fetchRss2Json(feedUrl, signal);
+    return mapRss2JsonItems(items, source).filter((article) =>
+      isPhilippineEarthquakeNews(article, query, region)
+    );
+  } catch {
+    return [];
   }
 }
 
@@ -264,37 +380,47 @@ async function runWithConcurrency(taskFns, limit) {
   return results;
 }
 
-async function fetchRssFeed({ url, source, region }, query, signal) {
-  if (isBrowserClient()) {
-    const items = await fetchRss2Json(url, signal);
-    return mapRss2JsonItems(items, source).filter((article) =>
-      isPhilippineEarthquakeNews(article, query, region)
-    );
-  }
-
-  const xml = await fetchText(url, 12000, signal);
-  return parseRssItems(xml, source).filter((article) =>
-    isPhilippineEarthquakeNews(article, query, region)
-  );
+async function fetchRssFeed({ url, source, region, cors = false }, query, signal, options = {}) {
+  return fetchRssArticles(url, source, query, region, signal, { ...options, cors });
 }
 
-async function fetchGoogleNewsArticles(query, signal, timeoutMs = 8000) {
+async function fetchGoogleNewsArticles(query, signal, options = {}, timeoutMs = 8000) {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-PH&gl=PH&ceid=PH:en`;
 
-  if (isBrowserClient()) {
-    const items = await fetchRss2Json(rssUrl, signal, timeoutMs);
-    return mapRss2JsonItems(items, "Google News");
+  if (!isBrowserClient()) {
+    const xml = await fetchText(rssUrl, timeoutMs, signal);
+    return parseRssItems(xml, "Google News");
   }
 
-  const xml = await fetchText(rssUrl, timeoutMs, signal);
-  return parseRssItems(xml, "Google News");
+  if (!options.forceRefresh) {
+    try {
+      const items = await fetchRss2Json(rssUrl, signal, timeoutMs);
+      return mapRss2JsonItems(items, "Google News");
+    } catch {
+      return [];
+    }
+  }
+
+  try {
+    const xml = await fetchRssXml(rssUrl, signal, { ...options, cors: false });
+    return parseRssItems(xml, "Google News");
+  } catch {
+    // Fall through to rss2json.
+  }
+
+  try {
+    const items = await fetchRss2Json(rssUrl, signal, timeoutMs);
+    return mapRss2JsonItems(items, "Google News");
+  } catch {
+    return [];
+  }
 }
 
 async function fetchGdeltArticles(query, signal) {
   const gdeltQuery = buildGdeltQuery(query);
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(gdeltQuery)}&mode=artlist&maxrecords=${MAX_ARTICLES}&format=json&sort=datedesc`;
-  const response = await fetch(resolveFetchUrl(url), {
-    headers: typeof window === "undefined" ? FETCH_HEADERS : { Accept: "application/json" },
+  const response = await fetch(url, {
+    headers: FETCH_HEADERS,
     signal,
   });
 
@@ -317,11 +443,19 @@ async function fetchGdeltArticles(query, signal) {
   }));
 }
 
-async function fetchAllSources(query, signal) {
+async function fetchAllSources(query, signal, { forceRefresh = false } = {}) {
+  const fetchOptions = { forceRefresh };
+  const googleQueries =
+    isBrowserClient() && !forceRefresh
+      ? getGoogleNewsQueries(query).slice(0, 3)
+      : getGoogleNewsQueries(query);
   const taskFns = [
-    ...RSS_FEEDS.map((feed) => () => fetchRssFeed(feed, query, signal).catch(() => [])),
-    ...getGoogleNewsQueries(query).map(
-      (searchQuery) => () => fetchGoogleNewsArticles(searchQuery, signal).catch(() => [])
+    ...RSS_FEEDS.map(
+      (feed) => () => fetchRssFeed(feed, query, signal, fetchOptions).catch(() => [])
+    ),
+    ...googleQueries.map(
+      (searchQuery) => () =>
+        fetchGoogleNewsArticles(searchQuery, signal, fetchOptions).catch(() => [])
     ),
   ];
 
@@ -344,14 +478,14 @@ export async function fetchEarthquakeNewsArticles(
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
   const cacheKey = query.trim().toLowerCase();
-  if (!forceRefresh) {
+  if (!forceRefresh && !isBrowserClient()) {
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
       return cached.articles;
     }
   }
 
-  let articles = await fetchAllSources(query, signal);
+  let articles = await fetchAllSources(query, signal, { forceRefresh });
 
   articles.sort(
     (a, b) => parseArticleDate(b.publishedAt) - parseArticleDate(a.publishedAt)

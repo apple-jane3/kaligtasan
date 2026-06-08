@@ -56,7 +56,9 @@ Also check **Settings → Actions → General → Workflow permissions** and ens
 
 **https://apple-jane3.github.io/kaligtasan/**
 
-All features, including the news feed, work on the live site. On GitHub Pages, news is fetched live in the browser via [rss2json.com](https://rss2json.com/) (CORS-friendly RSS proxy). The dev server uses a live `/api/news` endpoint with GDELT and direct RSS access.
+All features, including the news feed, work on the live site. On GitHub Pages, Philippine sources (Rappler, GMA News) are fetched live in the browser. Other feeds use a CORS proxy when available, with rss2json as fallback. The dev server uses a live `/api/news` endpoint with GDELT and direct RSS access.
+
+For the freshest international and Google News results on GitHub Pages, deploy the optional Cloudflare Worker in `workers/news-proxy.js` and set `VITE_NEWS_PROXY_URL` in the GitHub Actions build step.
 
 ## Tech stack
 
