@@ -166,11 +166,18 @@ function dedupeArticles(articles) {
   });
 }
 
+function isBrowserClient() {
+  return typeof window !== "undefined";
+}
+
 function resolveFetchUrl(url) {
-  if (typeof window === "undefined" || url.includes("gdeltproject.org")) {
-    return url;
-  }
+  if (!isBrowserClient()) return url;
   return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+}
+
+function getGoogleNewsQueries(query) {
+  const queries = GOOGLE_NEWS_QUERIES(query);
+  return isBrowserClient() ? queries.slice(0, 3) : queries;
 }
 
 async function fetchText(url, timeoutMs = 12000, signal) {
@@ -239,11 +246,14 @@ async function fetchGdeltArticles(query, signal) {
 async function fetchAllSources(query, signal) {
   const tasks = [
     ...RSS_FEEDS.map((feed) => fetchRssFeed(feed, query, signal).catch(() => [])),
-    ...GOOGLE_NEWS_QUERIES(query).map((searchQuery) =>
+    ...getGoogleNewsQueries(query).map((searchQuery) =>
       fetchGoogleNewsArticles(searchQuery, signal).catch(() => [])
     ),
-    fetchGdeltArticles(query, signal).catch(() => []),
   ];
+
+  if (!isBrowserClient()) {
+    tasks.push(fetchGdeltArticles(query, signal).catch(() => []));
+  }
 
   const results = await Promise.all(tasks);
   return dedupeArticles(results.flat());

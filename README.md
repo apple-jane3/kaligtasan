@@ -56,7 +56,7 @@ Also check **Settings → Actions → General → Workflow permissions** and ens
 
 **https://apple-jane3.github.io/kaligtasan/**
 
-All features, including the news feed, work on the live site. On GitHub Pages, news is fetched directly in the browser (RSS feeds are proxied to avoid CORS restrictions). Locally, the dev server uses a `/api/news` endpoint instead.
+All features, including the news feed, work on the live site. On GitHub Pages, news is fetched in the browser via RSS and Google News (proxied to avoid CORS). GDELT is included when running locally with `npm run dev` or `npm run preview`.
 
 ## Tech stack
 
