@@ -7,6 +7,9 @@ export const USGS_API =
 
 export const PHILIPPINE_CENTER = [12.8797, 121.774, 6];
 
+export const PH_LOCALE = "en-PH";
+export const PH_TIMEZONE = "Asia/Manila";
+
 export const PAR_POLYLINE = [
   [5, 115],
   [15, 115],

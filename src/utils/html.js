@@ -1,3 +1,5 @@
+import { PH_LOCALE, PH_TIMEZONE } from "../config.js";
+
 export function escapeHtml(str) {
   return String(str)
     .replace(/&/g, "&amp;")
@@ -6,18 +8,22 @@ export function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+const PH_DATE_TIME_OPTIONS = {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: PH_TIMEZONE,
+};
+
+function formatPhilippineDateTime(date) {
+  return date.toLocaleString(PH_LOCALE, PH_DATE_TIME_OPTIONS);
+}
+
 export function formatDateTime(timestamp) {
-  return new Date(timestamp).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatPhilippineDateTime(new Date(timestamp));
 }
 
 export function formatNewsDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return formatPhilippineDateTime(date);
 }
