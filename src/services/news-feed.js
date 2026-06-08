@@ -1,6 +1,9 @@
 const DEFAULT_QUERY = "earthquake philippines damage";
 const MAX_ARTICLES = 30;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const RSS2JSON_API = "https://api.rss2json.com/v1/api.json";
+const BROWSER_FETCH_TIMEOUT_MS = 15000;
+const BROWSER_FETCH_CONCURRENCY = 3;
 const FETCH_HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -12,7 +15,7 @@ const RSS_FEEDS = [
   { url: "https://feeds.bbci.co.uk/news/world/rss.xml", source: "BBC World", region: "world" },
   { url: "https://www.theguardian.com/world/rss", source: "The Guardian", region: "world" },
   { url: "https://www.aljazeera.com/xml/rss/all.xml", source: "Al Jazeera", region: "world" },
-  { url: "http://rss.cnn.com/rss/edition_asia.rss", source: "CNN Asia", region: "asia" },
+  { url: "https://rss.cnn.com/rss/edition_asia.rss", source: "CNN Asia", region: "asia" },
   { url: "https://www.rappler.com/feed/", source: "Rappler", region: "ph" },
   { url: "https://data.gmanetwork.com/gno/rss/news/nation/feed.xml", source: "GMA News", region: "ph" },
 ];
@@ -105,7 +108,7 @@ function buildGdeltQuery(query) {
   return `${simplified} philippines`;
 }
 
-function extractSearchTerms(query) {
+export function extractSearchTerms(query) {
   return simplifyQuery(query)
     .toLowerCase()
     .split(/\s+/)
@@ -122,6 +125,18 @@ function extractSearchTerms(query) {
           "casualties",
         ].includes(word)
     );
+}
+
+export function filterArticlesByQuery(articles, query) {
+  const terms = extractSearchTerms(query);
+  if (!terms.length) return articles;
+
+  const filtered = articles.filter((article) => {
+    const text = `${article.title} ${article.description || ""}`.toLowerCase();
+    return terms.some((term) => text.includes(term));
+  });
+
+  return filtered.length ? filtered : articles;
 }
 
 function isPhilippineEarthquakeNews(article, query, region = "world") {
@@ -170,14 +185,43 @@ function isBrowserClient() {
   return typeof window !== "undefined";
 }
 
-function resolveFetchUrl(url) {
-  if (!isBrowserClient()) return url;
-  return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+function getGoogleNewsQueries(query) {
+  return GOOGLE_NEWS_QUERIES(query);
 }
 
-function getGoogleNewsQueries(query) {
-  const queries = GOOGLE_NEWS_QUERIES(query);
-  return isBrowserClient() ? queries.slice(0, 3) : queries;
+function rss2JsonUrl(feedUrl) {
+  return `${RSS2JSON_API}?rss_url=${encodeURIComponent(feedUrl)}`;
+}
+
+function mapRss2JsonItems(items, defaultSource) {
+  return (items || []).map((item) => ({
+    title: item.title,
+    url: item.link,
+    publishedAt: item.pubDate,
+    source: defaultSource,
+    description: item.description ? stripHtml(item.description) : null,
+  }));
+}
+
+async function fetchRss2Json(feedUrl, signal, timeoutMs = BROWSER_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const onAbort = () => controller.abort();
+  signal?.addEventListener("abort", onAbort);
+
+  try {
+    const response = await fetch(rss2JsonUrl(feedUrl), { signal: controller.signal });
+    const data = await response.json();
+
+    if (!response.ok || data.status !== "ok") {
+      throw new Error(data.message || `RSS feed unavailable (${response.status})`);
+    }
+
+    return data.items || [];
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", onAbort);
+  }
 }
 
 async function fetchText(url, timeoutMs = 12000, signal) {
@@ -187,8 +231,8 @@ async function fetchText(url, timeoutMs = 12000, signal) {
   signal?.addEventListener("abort", onAbort);
 
   try {
-    const response = await fetch(resolveFetchUrl(url), {
-      headers: typeof window === "undefined" ? FETCH_HEADERS : { Accept: FETCH_HEADERS.Accept },
+    const response = await fetch(url, {
+      headers: FETCH_HEADERS,
       signal: controller.signal,
     });
 
@@ -203,7 +247,31 @@ async function fetchText(url, timeoutMs = 12000, signal) {
   }
 }
 
+async function runWithConcurrency(taskFns, limit) {
+  const results = new Array(taskFns.length);
+  let next = 0;
+
+  async function worker() {
+    while (next < taskFns.length) {
+      const current = next++;
+      results[current] = await taskFns[current]();
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(limit, taskFns.length) }, () => worker())
+  );
+  return results;
+}
+
 async function fetchRssFeed({ url, source, region }, query, signal) {
+  if (isBrowserClient()) {
+    const items = await fetchRss2Json(url, signal);
+    return mapRss2JsonItems(items, source).filter((article) =>
+      isPhilippineEarthquakeNews(article, query, region)
+    );
+  }
+
   const xml = await fetchText(url, 12000, signal);
   return parseRssItems(xml, source).filter((article) =>
     isPhilippineEarthquakeNews(article, query, region)
@@ -212,6 +280,12 @@ async function fetchRssFeed({ url, source, region }, query, signal) {
 
 async function fetchGoogleNewsArticles(query, signal, timeoutMs = 8000) {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-PH&gl=PH&ceid=PH:en`;
+
+  if (isBrowserClient()) {
+    const items = await fetchRss2Json(rssUrl, signal, timeoutMs);
+    return mapRss2JsonItems(items, "Google News");
+  }
+
   const xml = await fetchText(rssUrl, timeoutMs, signal);
   return parseRssItems(xml, "Google News");
 }
@@ -244,18 +318,21 @@ async function fetchGdeltArticles(query, signal) {
 }
 
 async function fetchAllSources(query, signal) {
-  const tasks = [
-    ...RSS_FEEDS.map((feed) => fetchRssFeed(feed, query, signal).catch(() => [])),
-    ...getGoogleNewsQueries(query).map((searchQuery) =>
-      fetchGoogleNewsArticles(searchQuery, signal).catch(() => [])
+  const taskFns = [
+    ...RSS_FEEDS.map((feed) => () => fetchRssFeed(feed, query, signal).catch(() => [])),
+    ...getGoogleNewsQueries(query).map(
+      (searchQuery) => () => fetchGoogleNewsArticles(searchQuery, signal).catch(() => [])
     ),
   ];
 
   if (!isBrowserClient()) {
-    tasks.push(fetchGdeltArticles(query, signal).catch(() => []));
+    taskFns.push(() => fetchGdeltArticles(query, signal).catch(() => []));
   }
 
-  const results = await Promise.all(tasks);
+  const results = isBrowserClient()
+    ? await runWithConcurrency(taskFns, BROWSER_FETCH_CONCURRENCY)
+    : await Promise.all(taskFns.map((task) => task()));
+
   return dedupeArticles(results.flat());
 }
 
