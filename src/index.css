@@ -737,19 +737,59 @@ body {
   transition: opacity 0.35s ease, filter 0.35s ease;
 }
 
-.quake-marker__icon {
-  display: block;
-  transition: transform 0.35s ease, filter 0.35s ease;
+.quake-marker__pin {
+  width: var(--quake-size, 34px);
+  height: var(--quake-size, 34px);
+  background: var(--quake-color, #ea1c29);
+  border: 2px solid #fff;
+  border-radius: 5px;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 0.35s ease, filter 0.35s ease, box-shadow 0.35s ease;
 }
 
-.quake-marker--dimmed {
+.quake-marker__icon {
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.quake-marker--dimmed .quake-marker__pin {
   opacity: 0.35;
   filter: grayscale(0.45);
 }
 
-.quake-marker--selected .quake-marker__icon {
+.quake-marker--selected .quake-marker__pin {
   animation: quake-marker-bounce 0.7s ease;
   filter: drop-shadow(0 0 10px var(--pulse-color, #ea1c29));
+}
+
+.legend-quake-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: #e53e3e;
+  color: #fff;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #e53e3e;
+  transform: rotate(45deg);
+  vertical-align: middle;
+  margin-right: 0.35rem;
+  line-height: 0;
+}
+
+.legend-quake-icon svg {
+  transform: rotate(-45deg);
+  display: block;
 }
 
 .quake-pulse-marker {
@@ -918,7 +958,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .quake-marker--selected .quake-marker__icon,
+  .quake-marker--selected .quake-marker__pin,
   .quake-pulse__ring,
   .quake-impact-zone,
   .map-quake-info {

@@ -22,14 +22,16 @@ import {
   buildDirectionsUrl,
   buildOsmUrl,
 } from "../services/evacuation.js";
-import { computeMagnitudeIconSize } from "../services/earthquakes.js";
-import { mapMarkers } from "../assets/index.js";
 import {
   createEvacMarkerIcon,
   getEvacMarkerConfig,
   EVAC_MARKER_TYPES,
   renderEvacMarkerSvg,
 } from "../utils/evac-markers.js";
+import {
+  createQuakeMarkerIcon,
+  renderEpicenterSvg,
+} from "../utils/quake-markers.js";
 
 const userIcon = L.divIcon({
   className: "user-location-marker",
@@ -44,25 +46,6 @@ function getQuakeColor(magnitude) {
 
 function estimateImpactRadiusM(magnitude) {
   return Math.min(120000, Math.max(12000, 10 ** ((magnitude - 3.2) * 0.62) * 6000));
-}
-
-function createQuakeIcon(magnitude, { selected, dimmed, color }) {
-  const [width, height] = computeMagnitudeIconSize(magnitude);
-  const className = [
-    "quake-marker",
-    selected && "quake-marker--selected",
-    dimmed && "quake-marker--dimmed",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const pulseStyle = selected ? ` style="--pulse-color:${color}"` : "";
-
-  return L.divIcon({
-    className,
-    html: `<div class="quake-marker__wrap"${pulseStyle}><img class="quake-marker__icon" src="${mapMarkers.epicenter}" width="${width}" height="${height}" alt="" /></div>`,
-    iconSize: [width, height],
-    iconAnchor: [width / 2, height / 2],
-  });
 }
 
 function createPulseIcon(color) {
@@ -286,7 +269,7 @@ export default function MapView({
               )}
               <Marker
                 position={[eqLat, eqLon]}
-                icon={createQuakeIcon(mag, {
+                icon={createQuakeMarkerIcon(mag, {
                   selected: isSelected,
                   dimmed: isDimmed,
                   color,
@@ -312,7 +295,11 @@ export default function MapView({
           <i className="legend-dot legend-dot--you" /> Your location
         </span>
         <span>
-          <i className="legend-dot legend-dot--quake" /> Epicenter
+          <i
+            className="legend-quake-icon"
+            dangerouslySetInnerHTML={{ __html: renderEpicenterSvg(12) }}
+          />{" "}
+          Epicenter
         </span>
         {selectedEvent && (
           <span className="map-legend__selected">

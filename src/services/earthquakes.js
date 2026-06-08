@@ -9,10 +9,3 @@ export async function fetchRecentEarthquakes() {
   return data.features || [];
 }
 
-export function computeMagnitudeIconSize(magnitude) {
-  if (magnitude < 4) return [50, 50];
-  const MAX = 500;
-  const BASE = 50;
-  const factor = (MAX - BASE) * (Math.log10(magnitude) / 10);
-  return [50 + factor, 50 + factor];
-}
