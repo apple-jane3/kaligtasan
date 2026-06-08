@@ -52,7 +52,9 @@ export default function NewsPanel({
         )}
         {!error && articles.length > 0 && (
           <>
-            <div className="results__summary">{articles.length} articles</div>
+            <div className="results__summary">
+              {loading ? "Refreshing…" : `${articles.length} articles`}
+            </div>
             <div className="results__list">
               {articles.map((article) => (
                 <NewsArticle key={article.url} article={article} />

@@ -15,8 +15,10 @@ export function buildNewsQuery(selectedPlace) {
   return `${location} earthquake damage Philippines`;
 }
 
-async function fetchFromApi(query, signal) {
-  const url = `${NEWS.apiPath}?q=${encodeURIComponent(query)}`;
+async function fetchFromApi(query, signal, forceRefresh = false) {
+  const url = `${NEWS.apiPath}?q=${encodeURIComponent(query)}${
+    forceRefresh ? "&refresh=1" : ""
+  }`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), NEWS.timeoutMs);
   const onAbort = () => controller.abort();
@@ -38,16 +40,22 @@ async function fetchFromApi(query, signal) {
   }
 }
 
-export async function fetchEarthquakeNews(query = NEWS.defaultQuery, signal) {
+export async function fetchEarthquakeNews(
+  query = NEWS.defaultQuery,
+  signal,
+  { forceRefresh = false } = {}
+) {
   const cacheKey = query.trim().toLowerCase();
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < NEWS.cacheTtlMs) {
-    return cached.articles;
+  if (!forceRefresh) {
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < NEWS.cacheTtlMs) {
+      return cached.articles;
+    }
   }
 
   const articles = useClientFeed
-    ? await fetchEarthquakeNewsArticles(query, signal)
-    : await fetchFromApi(query, signal);
+    ? await fetchEarthquakeNewsArticles(query, signal, { forceRefresh })
+    : await fetchFromApi(query, signal, forceRefresh);
 
   if (!articles.length) {
     throw new Error("No news articles found. Try again later.");

@@ -214,7 +214,7 @@ export default function App() {
     setSelectedCode(null);
   }, []);
 
-  const loadNews = useCallback(async () => {
+  const loadNews = useCallback(async (forceRefresh = false) => {
     newsAbortRef.current?.abort();
     newsAbortRef.current = new AbortController();
     const { signal } = newsAbortRef.current;
@@ -223,7 +223,7 @@ export default function App() {
     setNewsError("");
 
     try {
-      const articles = await fetchEarthquakeNews(newsQuery, signal);
+      const articles = await fetchEarthquakeNews(newsQuery, signal, { forceRefresh });
       setNewsArticles(articles);
     } catch (err) {
       if (err.name === "AbortError") return;
@@ -314,7 +314,7 @@ export default function App() {
           loading: newsLoading,
           error: newsError,
           queryLabel: newsQueryLabel,
-          onRefresh: loadNews,
+          onRefresh: () => loadNews(true),
         }}
       />
       <MapView

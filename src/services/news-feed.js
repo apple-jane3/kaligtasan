@@ -336,13 +336,19 @@ async function fetchAllSources(query, signal) {
   return dedupeArticles(results.flat());
 }
 
-export async function fetchEarthquakeNewsArticles(query = DEFAULT_QUERY, signal) {
+export async function fetchEarthquakeNewsArticles(
+  query = DEFAULT_QUERY,
+  signal,
+  { forceRefresh = false } = {}
+) {
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
 
   const cacheKey = query.trim().toLowerCase();
-  const cached = cache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.articles;
+  if (!forceRefresh) {
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.articles;
+    }
   }
 
   let articles = await fetchAllSources(query, signal);
@@ -367,7 +373,10 @@ export function createNewsApiMiddleware() {
     try {
       const url = new URL(req.url, "http://localhost");
       const query = url.searchParams.get("q") || DEFAULT_QUERY;
-      const articles = await fetchEarthquakeNewsArticles(query);
+      const forceRefresh = url.searchParams.get("refresh") === "1";
+      const articles = await fetchEarthquakeNewsArticles(query, undefined, {
+        forceRefresh,
+      });
       res.setHeader("Content-Type", "application/json");
       res.end(JSON.stringify({ articles }));
     } catch (err) {
