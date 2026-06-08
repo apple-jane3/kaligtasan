@@ -37,12 +37,22 @@ The dev server includes a `/api/news` middleware that proxies and aggregates new
 
 This repo is set up to deploy automatically from the `main` branch via [GitHub Actions](.github/workflows/deploy.yml).
 
-1. Push your code to [github.com/apple-jane3/kaligtasan](https://github.com/apple-jane3/kaligtasan).
-2. In the repository on GitHub, go to **Settings → Pages**.
-3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-4. Push to `main` (or run the workflow manually under **Actions → Deploy to GitHub Pages → Run workflow**).
+### One-time setup (required)
 
-The site will be published at:
+Before the first deploy can succeed, enable GitHub Pages in the repository:
+
+1. Open **[Settings → Pages](https://github.com/apple-jane3/kaligtasan/settings/pages)** for this repo.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions** (not “Deploy from a branch”).
+3. Save if prompted.
+
+If the deploy job fails with `Failed to create deployment (status: 404)`, Pages is not enabled yet or the source is still set to a branch instead of GitHub Actions.
+
+Also check **Settings → Actions → General → Workflow permissions** and ensure **Read and write permissions** is selected so the workflow can publish.
+
+### Deploy
+
+1. Push to `main`, or re-run the failed workflow under **Actions → Deploy to GitHub Pages → Re-run all jobs**.
+2. After the workflow completes, the site is live at:
 
 **https://apple-jane3.github.io/kaligtasan/**
 
