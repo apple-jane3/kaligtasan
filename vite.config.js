@@ -16,5 +16,6 @@ function newsApiPlugin() {
 }
 
 export default defineConfig({
+  base: process.env.GITHUB_PAGES ? "/kaligtasan/" : "/",
   plugins: [react(), newsApiPlugin()],
 });

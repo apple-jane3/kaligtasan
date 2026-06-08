@@ -33,6 +33,21 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 The dev server includes a `/api/news` middleware that proxies and aggregates news feeds. This endpoint is also available when running `npm run preview`.
 
+## Deploy to GitHub Pages
+
+This repo is set up to deploy automatically from the `main` branch via [GitHub Actions](.github/workflows/deploy.yml).
+
+1. Push your code to [github.com/apple-jane3/kaligtasan](https://github.com/apple-jane3/kaligtasan).
+2. In the repository on GitHub, go to **Settings → Pages**.
+3. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+4. Push to `main` (or run the workflow manually under **Actions → Deploy to GitHub Pages → Run workflow**).
+
+The site will be published at:
+
+**https://apple-jane3.github.io/kaligtasan/**
+
+Earthquake tracking and evacuation search work on the live site. The news tab requires the server-side `/api/news` endpoint, so use `npm run dev` or `npm run preview` locally for full news aggregation.
+
 ## Tech stack
 
 - [React](https://react.dev/) 18
