@@ -28,16 +28,19 @@ body {
   background: var(--bg);
   color: var(--text);
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 #root {
   height: 100vh;
+  height: 100dvh;
 }
 
 .app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
 }
 
 .sidebar {
@@ -977,18 +980,214 @@ body {
 
   .sidebar {
     width: 100%;
+    min-width: 0;
     max-width: none;
-    max-height: 45vh;
+    flex: 1 1 46%;
+    min-height: 0;
+    max-height: none;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
 
+  .sidebar__header {
+    padding: 0.75rem 1rem;
+  }
+
+  .sidebar__logo {
+    width: 40px;
+    height: 40px;
+  }
+
+  .sidebar__title {
+    font-size: 1.125rem;
+  }
+
+  .sidebar__nav {
+    padding: 0.5rem 0.75rem 0;
+    gap: 0.35rem;
+  }
+
+  .sidebar__content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar__footer {
+    padding: 0.5rem 0.75rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .panel {
+    padding: 0.875rem 1rem;
+  }
+
+  .nav-tab,
+  .btn,
+  .link-btn {
+    min-height: 44px;
+  }
+
+  .nav-tab {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.35rem;
+  }
+
+  .field__input {
+    font-size: 16px;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .btn--block {
+    padding: 0.85rem;
+  }
+
+  .quake-card__actions button {
+    min-height: 36px;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.6875rem;
+  }
+
   .map-wrap {
-    min-height: 55vh;
+    flex: 1 1 54%;
+    min-height: 0;
+  }
+
+  .app--map-focus .sidebar {
+    flex: 0 0 auto;
+  }
+
+  .app--map-focus .sidebar__content,
+  .app--map-focus .sidebar__footer {
+    display: none;
+  }
+
+  .app--map-focus .map-wrap {
+    flex: 1 1 auto;
+  }
+
+  .mobile-view-toggle {
+    display: flex;
+  }
+
+  .map-quake-info {
+    top: max(0.5rem, env(safe-area-inset-top));
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    max-width: none;
+    width: auto;
+    transform: none;
+    padding: 0.65rem 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .map-quake-info__mag {
+    width: 2.5rem;
+    font-size: 0.9375rem;
+  }
+
+  .map-quake-info__place {
+    font-size: 0.75rem;
   }
 
   .map-legend {
-    flex-wrap: wrap;
+    left: max(0.5rem, env(safe-area-inset-left));
+    right: max(0.5rem, env(safe-area-inset-right));
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    max-width: none;
+    max-height: 28vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    gap: 0.4rem 0.65rem;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.625rem;
+  }
+
+  .map-legend--with-evac {
+    max-width: none;
+  }
+
+  .map-wrap .leaflet-top.leaflet-left {
+    top: auto;
+    bottom: calc(3.25rem + env(safe-area-inset-bottom));
+    left: max(0.5rem, env(safe-area-inset-left));
+  }
+
+  .map-wrap .leaflet-top.leaflet-right {
+    top: auto;
+    bottom: calc(3.25rem + env(safe-area-inset-bottom));
+    right: max(0.5rem, env(safe-area-inset-right));
+  }
+
+  .map-wrap .leaflet-control-zoom a {
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+  }
+}
+
+.mobile-view-toggle {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1100;
+  transform: translate(-50%, -50%);
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0.35rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow);
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.mobile-view-toggle:active {
+  background: #eff6ff;
+}
+
+@media (max-width: 480px) {
+  .sidebar__subtitle {
+    display: none;
+  }
+
+  .sidebar__header {
     gap: 0.5rem;
+  }
+
+  .action-row {
+    grid-template-columns: 1fr;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .site-card__header {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .site-card__distance {
+    grid-column: 2;
+    justify-self: start;
+    white-space: normal;
+  }
+
+  .map-quake-info__close {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-view-toggle {
+    display: none !important;
   }
 }

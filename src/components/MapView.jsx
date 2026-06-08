@@ -171,6 +171,8 @@ export default function MapView({
   onClearSelection,
   originLat,
   originLon,
+  mobileMapFocus,
+  onToggleMobileView,
 }) {
   const [lat, lon, zoom] = PHILIPPINE_CENTER;
   const hasSelection = Boolean(selectedCode);
@@ -289,6 +291,15 @@ export default function MapView({
       </MapContainer>
 
       <MapQuakeInfo event={selectedEvent} onDismiss={onClearSelection} />
+
+      <button
+        type="button"
+        className="mobile-view-toggle"
+        onClick={onToggleMobileView}
+        aria-expanded={mobileMapFocus}
+      >
+        {mobileMapFocus ? "Show panel" : "Show map"}
+      </button>
 
       <div className={`map-legend${evacuationSites.length ? " map-legend--with-evac" : ""}`}>
         <span>

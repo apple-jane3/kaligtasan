@@ -37,6 +37,7 @@ export default function App() {
   const [newsArticles, setNewsArticles] = useState([]);
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState("");
+  const [mobileMapFocus, setMobileMapFocus] = useState(false);
 
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
@@ -106,6 +107,7 @@ export default function App() {
         setSites(results);
         setLoading(false);
         setStatus(label ? `Found sites near ${label}` : "Evacuation sites loaded");
+        setMobileMapFocus(true);
 
         enrichSiteAddresses(results, signal).then(() => {
           if (requestId !== requestIdRef.current || signal.aborted) return;
@@ -202,6 +204,7 @@ export default function App() {
       setSelectedCode(code);
       setPanTarget({ lat, lon, zoom: 10, key: Date.now() });
       setActiveTab("earthquakes");
+      setMobileMapFocus(true);
     },
     [earthquakes]
   );
@@ -236,8 +239,12 @@ export default function App() {
     }
   }, [activeTab, loadNews]);
 
+  useEffect(() => {
+    if (pickMode) setMobileMapFocus(true);
+  }, [pickMode]);
+
   return (
-    <div className="app">
+    <div className={`app${mobileMapFocus ? " app--map-focus" : ""}`}>
       <Sidebar
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -291,6 +298,8 @@ export default function App() {
         onClearSelection={handleClearEarthquakeSelection}
         originLat={origin?.lat}
         originLon={origin?.lon}
+        mobileMapFocus={mobileMapFocus}
+        onToggleMobileView={() => setMobileMapFocus((focused) => !focused)}
       />
     </div>
   );
