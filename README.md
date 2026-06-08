@@ -46,7 +46,7 @@ The site will be published at:
 
 **https://apple-jane3.github.io/kaligtasan/**
 
-Earthquake tracking and evacuation search work on the live site. The news tab requires the server-side `/api/news` endpoint, so use `npm run dev` or `npm run preview` locally for full news aggregation.
+All features, including the news feed, work on the live site. On GitHub Pages, news is fetched directly in the browser (RSS feeds are proxied to avoid CORS restrictions). Locally, the dev server uses a `/api/news` endpoint instead.
 
 ## Tech stack
 

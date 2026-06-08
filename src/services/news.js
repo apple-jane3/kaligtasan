@@ -1,6 +1,8 @@
 import { NEWS } from "../config.js";
+import { fetchEarthquakeNewsArticles } from "./news-feed.js";
 
 const cache = new Map();
+const useClientFeed = import.meta.env.BASE_URL !== "/";
 
 export function buildNewsQuery(selectedPlace) {
   if (!selectedPlace) return NEWS.defaultQuery;
@@ -43,7 +45,9 @@ export async function fetchEarthquakeNews(query = NEWS.defaultQuery, signal) {
     return cached.articles;
   }
 
-  const articles = await fetchFromApi(query, signal);
+  const articles = useClientFeed
+    ? await fetchEarthquakeNewsArticles(query, signal)
+    : await fetchFromApi(query, signal);
 
   if (!articles.length) {
     throw new Error("No news articles found. Try again later.");
